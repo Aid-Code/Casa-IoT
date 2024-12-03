@@ -41,10 +41,13 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 int lectura_switch = 0;
+bool estado_anterior = true;
 bool signupOK = false;
 bool light_on = false;
+bool light_on_bd = false;
 
-void setup(){
+void setup()
+{
   Serial.begin(115200);
   pinMode(SWITCH, INPUT_PULLUP);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -83,22 +86,37 @@ void setup(){
 void loop()
 {
   lectura_switch = digitalRead(SWITCH);
-
-  if (lectura_switch == 1) 
+  if (lectura_switch == 0 && estado_anterior == 1) 
   {
-    light_on = false;
+    light_on = !light_on;
+    estado_anterior = 0;
   }
-  else if (lectura_switch == 0) 
+  else if (lectura_switch == 1 && estado_anterior == 0)
   {
-    light_on = true;
+    light_on = !light_on;
+    estado_anterior = 1;
   }
 
-  if (Firebase.ready() && signupOK){
+  if (Firebase.ready() && signupOK)
+  {
+    if (Firebase.RTDB.getBool(&fbdo, "pedernera/hab_aiden/luz_techo")) 
+    {
+      if (fbdo.dataType() == "bool") 
+      {
+        light_on_bd = fbdo.boolData();
+      }
 
-    if (Firebase.RTDB.setBool(&fbdo, "pedernera/hab_aiden/luz_techo", light_on)){
-      /*Serial.print("LED: ");
+      if (light_on_bd == false && light_on == true)
+      {
+        light_on = false;
+      }
+    }
+
+    if (Firebase.RTDB.setBool(&fbdo, "pedernera/hab_aiden/luz_techo", light_on))
+    {
+      Serial.print("LED: ");
       if (light_on) Serial.println("ON");
-      else Serial.println("OFF");*/
+      else Serial.println("OFF");
     }
     else {
       Serial.println("FAILED");
