@@ -40,9 +40,13 @@ FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
-int lectura_switch = 0;
-bool estado_anterior = true;
 bool signupOK = false;
+
+int lectura_switch = 0;
+int estado_actual = 0;
+int estado_previo = 0;
+
+bool cambio = false;
 bool light_on = false;
 bool light_on_bd = false;
 
@@ -86,30 +90,29 @@ void setup()
 void loop()
 {
   lectura_switch = digitalRead(SWITCH);
-  if (lectura_switch == 0 && estado_anterior == 1) 
+
+  estado_actual = lectura_switch;
+
+  if (estado_actual != estado_previo)
   {
-    light_on = !light_on;
-    estado_anterior = 0;
+    cambio = true;
   }
-  else if (lectura_switch == 1 && estado_anterior == 0)
+  else if (estado_actual == estado_previo)
   {
-    light_on = !light_on;
-    estado_anterior = 1;
+    cambio = false;
   }
+
+  estado_previo = lectura_switch;
 
   if (Firebase.ready() && signupOK)
   {
     if (Firebase.RTDB.getBool(&fbdo, "pedernera/hab_aiden/luz_techo")) 
     {
-      if (fbdo.dataType() == "bool") 
-      {
-        light_on_bd = fbdo.boolData();
-      }
-
-      if (light_on_bd == false && light_on == true)
-      {
-        light_on = false;
-      }
+      if (fbdo.dataType() == "bool") light_on_bd = fbdo.boolData();
+      
+      if (cambio && light_on_bd == false) light_on = true;
+      
+      if (cambio && light_on_bd == true) light_on = false;
     }
 
     if (Firebase.RTDB.setBool(&fbdo, "pedernera/hab_aiden/luz_techo", light_on))
@@ -118,7 +121,8 @@ void loop()
       if (light_on) Serial.println("ON");
       else Serial.println("OFF");
     }
-    else {
+    else 
+    {
       Serial.println("FAILED");
       Serial.println("REASON: " + fbdo.errorReason());
     }
